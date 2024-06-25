@@ -1,0 +1,654 @@
+#!/usr/bin/env python3
+
+# version 1.1.3 - 20231213161842 - Improved focus and calculations accuracy
+# version 1.1.2 - 20231212214614 - Changed some variable names for clarity
+# version 1.1.1 - 20231103232008 - Added tooltips to labels and buttons
+# version 1.1.0 - 20231101172234 - Traced and fixed few bugs (try/except)
+# version 1.0.9 - 20231101142525 - Added energy conversion facility
+# version 1.0.8 - 20230211181951 - Rearranged unit fields incrementally
+# version 1.0.7 - 20220907085428 - Tidied up UX and added EntryWidth to rc
+# version 1.0.6 - 20220906130614 - Added Angstrom and fixed functions
+# version 1.0.5 - 20220307134149 - Expanded the conversion idea to more units
+# version 1.0.4 - 20220305115201 - Changed colouring to default schemes
+# version 1.0.3 - 20220303122243 - Tidied up the code
+# version 1.0.2 - 20220302155055 - Further Cosmetic Changes
+# version 1.0.1 - Cosmetic Changes
+# version 1.0.0 - Initial Program
+
+import os
+import re
+import sys
+import math
+from tkinter import *
+from tkinter import messagebox
+from idlelib.tooltip import Hovertip
+
+try:
+  with open(os.environ.get('PWD') + '/.SXConvertrc') as resourceFile:
+    fileContents = resourceFile.read()
+    Precision = re.search('Precision.*=.*\d+', fileContents)[0].split('=')[1]
+except:
+  Precision=2
+
+try:
+  with open(os.environ.get('PWD') + '/.SXConvertrc') as resourceFile:
+    fileContents = resourceFile.read()
+    EntryWidth = re.search('EntryWidth.*=.*\d+', fileContents)[0].split('=')[1]
+    EntryHeight = re.search('EntryHeight.*=.*\d+', fileContents)[0].split('=')[1]
+except:
+  EntryWidth = 12 
+  EntryHeight = 4
+
+ButtonWidth = 8
+ToolTipDelay = 667
+
+tempCelsiusLabelText="°C"
+tempFahrenheitLabelText="°F"
+tempKelvinLabelText="°K"
+
+energyJoulesLabelText="J"
+energy_eVLabelText="eV"
+energy_ergLabelText="erg"
+
+dAnLabelText="Å"
+dMmLabelText="mm"
+dCmLabelText="cm"
+dInLabelText="in"
+dFtLabelText="ft"
+dYdLabelText="yd"
+dMtLabelText="m"
+dKmLabelText="km"
+dMiLabelText="mi"
+dNaLabelText="nmi"
+dAULabelText="au"
+dLyLabelText="ly"
+dPcLabelText="pc"
+prSLabelText="Decimal Precision:"
+
+convC2FKButtonText="°C -> °F, °K"
+convF2CKButtonText="°F -> °C, °K"
+convK2CFButtonText="°K -> °C, °F"
+
+convJ2eVergButtonText="J -> eV, erg"
+conveV2JergButtonText="eV -> J, erg"
+converg2JeVButtonText="erg -> J, eV"
+
+convAn2AButtonText="Å -> ✳"
+convMm2AButtonText="mm -> ✳"
+convCm2AButtonText="cm -> ✳"
+convIn2AButtonText="in -> ✳"
+convFt2AButtonText="ft -> ✳"
+convYd2AButtonText="yd -> ✳"
+convMt2AButtonText="m -> ✳"
+convKm2AButtonText="km -> ✳"
+convMi2AButtonText="mi -> ✳"
+convNa2AButtonText="nmi -> ✳"
+convAU2AButtonText="au -> ✳"
+convLy2AButtonText="ly -> ✳"
+convPc2AButtonText="pc -> ✳"
+
+resetButtonText="Reset"
+clearOneButtonText="Clear Selected"
+exitMessageText="Are you sure you want to quit?"
+exitButtonText="Exit"
+
+def temperatureParse():
+  try:
+    if tempC.get() < -273.15:
+      tempC.set(-273.15)
+  except:
+    tempC.set(float(0.00))
+  try:
+    if tempF.get() < -459.67:
+      tempF.set(-459.67)
+  except:
+    tempF.set(float(0.00))
+  try:
+    if tempK.get() < 0.00:
+      tempK.set(0.00)
+  except:
+    tempK.set(float(0.00))
+
+def energyParse():
+  try:
+    energyJ.set(abs(energyJ.get()))
+  except:
+    energyJ.set(float(0.00))
+  try:
+    energyeV.set(abs(energyeV.get()))
+  except:
+    energyeV.set(float(0.00))
+  try:
+    energyerg.set(abs(energyerg.get()))
+  except:
+    energyerg.set(float(0.00))
+
+def C2FK():
+  temperatureParse()
+  tempF.set(round(tempC.get() * 9 / 5 + 32, 2))
+  tempK.set(round(tempC.get() + 273.15, 2))
+  convC2FKButton.focus_set()
+
+def F2CK():
+  temperatureParse()
+  tempC.set(round((tempF.get() - 32) * 5 / 9, 2))
+  tempK.set(round(tempC.get() + 273.15, 2))
+  convF2CKButton.focus_set()
+
+def K2CF():
+  temperatureParse()
+  tempC.set(round(tempK.get() - 273.15, 2))
+  tempF.set(round(tempC.get() * 9 / 5 + 32, 2))
+  convK2CFButton.focus_set()
+
+def J2eVerg():
+  energyParse()
+  energyJ.set(f'{abs(energyJ.get()):.{precision.get()}e}')
+  energyeV.set(f'{energyJ.get() / 1.6e-19:.{precision.get()}e}')
+  energyerg.set(f'{energyJ.get() / 1e-7:.{precision.get()}e}')
+  convJ2eVergButton.focus_set()
+
+def eV2Jerg():
+  energyParse()
+  energyeV.set(f'{abs(energyeV.get()):.{precision.get()}e}')
+  energyJ.set(f'{energyeV.get() * 1.6e-19:.{precision.get()}e}')
+  energyerg.set(f'{energyJ.get() / 1e-7:.{precision.get()}e}')
+  conveV2JergButton.focus_set()
+
+def erg2JeV():
+  energyParse()
+  energyerg.set(f'{abs(energyerg.get()):.{precision.get()}e}')
+  energyJ.set(f'{energyerg.get() * 1e-7:.{precision.get()}e}')
+  energyeV.set(f'{energyJ.get() / 1.6e-19:.{precision.get()}e}')
+  converg2JeVButton.focus_set()
+
+def An2A():
+  try:
+    distAn.set(abs(distAn.get()))
+  except:
+    distAn.set(float(0.00))
+  distAn.set(f'{abs(distAn.get()):.{precision.get()}e}')
+  setRest()
+  convAn2AButton.focus_set()
+
+def mm2A():
+  try:
+    distMm.set(abs(distMm.get()))
+  except:
+    distMm.set(float(0.00))
+  distMm.set(f'{abs(distMm.get()):.{precision.get()}e}')
+  distAn.set(f'{distMm.get() * 1e7:.{precision.get()}e}')
+  setRest()
+  convMm2AButton.focus_set()
+
+def cm2A():
+  try:
+    distCm.set(abs(distCm.get()))
+  except:
+    distCm.set(float(0.00))
+  distCm.set(f'{abs(distCm.get()):.{precision.get()}e}')
+  distAn.set(f'{distCm.get() * 1e8:.{precision.get()}e}')
+  setRest()
+  convCm2AButton.focus_set()
+
+def in2A():
+  try:
+    distIn.set(abs(distIn.get()))
+  except:
+    distIn.set(float(0.00))
+  distIn.set(f'{abs(distIn.get()):.{precision.get()}e}')
+  distAn.set(f'{distIn.get() * (2.54 * 1e8):.{precision.get()}e}')
+  setRest()
+  convIn2AButton.focus_set()
+
+def ft2A():
+  try:
+    distFt.set(abs(distFt.get()))
+  except:
+    distFt.set(float(0.00))
+  distFt.set(f'{abs(distFt.get()):.{precision.get()}e}')
+  distAn.set(f'{distFt.get() * (12 * 2.54 * 1e8):.{precision.get()}e}')
+  setRest()
+  convFt2AButton.focus_set()
+
+def yd2A():
+  try:
+    distYd.set(abs(distYd.get()))
+  except:
+    distYd.set(float(0.00))
+  distYd.set(f'{abs(distYd.get()):.{precision.get()}e}')
+  distAn.set(f'{distYd.get() * (3 * 12 * 2.54 * 1e8):.{precision.get()}e}')
+  setRest()
+  convYd2AButton.focus_set()
+
+def mt2A():
+  try:
+    distMt.set(abs(distMt.get()))
+  except:
+    distMt.set(float(0.00))
+  distMt.set(f'{abs(distMt.get()):.{precision.get()}e}')
+  distAn.set(f'{distMt.get() * 1e10:.{precision.get()}e}')
+  setRest()
+  convMt2AButton.focus_set()
+
+def km2A():
+  try:
+    distKm.set(abs(distKm.get()))
+  except:
+    distKm.set(float(0.00))
+  distKm.set(f'{abs(distKm.get()):.{precision.get()}e}')
+  distAn.set(f'{distKm.get() * 1e13:.{precision.get()}e}')
+  setRest()
+  convKm2AButton.focus_set()
+
+def mi2A():
+  try:
+    distMi.set(abs(distMi.get()))
+  except:
+    distMi.set(float(0.00))
+  distMi.set(f'{abs(distMi.get()):.{precision.get()}e}')
+  distAn.set(f'{distMi.get() * (1760 * 12 * 3 * 2.54 * 1e8):.{precision.get()}e}')
+  setRest()
+  convMi2AButton.focus_set()
+
+def na2A():
+  try:
+    distNa.set(abs(distNa.get()))
+  except:
+    distNa.set(float(0.00))
+  distNa.set(f'{abs(distNa.get()):.{precision.get()}e}')
+  distAn.set(f'{distNa.get() * (1852 * 1e10):.{precision.get()}e}')
+  setRest()
+  convNa2AButton.focus_set()
+
+def AU2A():
+  try:
+    distAU.set(abs(distAU.get()))
+  except:
+    distAU.set(float(0.00))
+  distAU.set(f'{abs(distAU.get()):.{precision.get()}e}')
+  distAn.set(f'{distAU.get() * (149597870700 * 1e10):.{precision.get()}e}')
+  setRest()
+  convAU2AButton.focus_set()
+
+def ly2A():
+  try:
+    distLy.set(abs(distLy.get()))
+  except:
+    distLy.set(float(0.00))
+  distLy.set(f'{abs(distLy.get()):.{precision.get()}e}')
+  distAn.set(f'{distLy.get() * (9460730472580800 * 1e10):.{precision.get()}e}')
+  setRest()
+  convLy2AButton.focus_set()
+
+def pc2A():
+  try:
+    distPc.set(abs(distPc.get()))
+  except:
+    distPc.set(float(0.00))
+  distPc.set(f'{abs(distPc.get()):.{precision.get()}e}')
+  distAn.set(f'{distPc.get() * (149597870700 * 1e10 * 648000 / math.pi):.{precision.get()}e}')
+  setRest()
+  convPc2AButton.focus_set()
+
+def setRest():
+  distMm.set(f'{distAn.get() / 1e7:.{precision.get()}e}')
+  distCm.set(f'{distAn.get() / 1e8:.{precision.get()}e}')
+  distIn.set(f'{distAn.get() / (2.54 * 1e8):.{precision.get()}e}')
+  distFt.set(f'{distAn.get() / (12 * 2.54 * 1e8):.{precision.get()}e}')
+  distYd.set(f'{distAn.get() / (3 * 12 * 2.54 * 1e8):.{precision.get()}e}')
+  distMt.set(f'{distAn.get() / 1e10:.{precision.get()}e}')
+  distKm.set(f'{distAn.get() / 1e13:.{precision.get()}e}')
+  distMi.set(f'{distAn.get() / (1760 * 12 * 3 * 2.54 * 1e8):.{precision.get()}e}')
+  distNa.set(f'{distAn.get() / (1852 * 1e10):.{precision.get()}e}')
+  distAU.set(f'{distAn.get() / (149597870700 * 1e10):.{precision.get()}e}')
+  distLy.set(f'{distAn.get() / (9460730472580800 * 1e10):.{precision.get()}e}')
+  distPc.set(f'{distAn.get() / (149597870700 * 1e10 * 648000 / math.pi):.{precision.get()}e}')
+
+def updateAll():
+  temperatureParse()
+  energyParse()
+  C2FK()
+  F2CK()
+  K2CF()
+  J2eVerg()
+  eV2Jerg()
+  erg2JeV()
+  An2A()
+  setRest()
+
+def mAbout():
+  messagebox.showinfo(title="About", message="This is my About Box")
+  return
+def clearOne():
+  try:
+    rootW.focus_get().delete(0, "end")
+  except:
+    pass
+  # The following is a bad idea and disrupts the UI workflow, DO NOT UNCOMMENT
+  # clearOneButton.focus_set()
+
+def mQuit():
+  try:
+    with open(os.environ.get('PWD') + '/.SXConvertrc') as resourceFile:
+      fileContents = resourceFile.read()
+      qExit = re.search('qExit.*=.*True', fileContents)
+  except:
+    #qExit = None
+    qExit = True
+  if not qExit:
+    qExit = messagebox.askyesno(title=exitButtonText, message=exitMessageText)
+  if qExit:
+    rootW.destroy()
+  return
+
+rootW = Tk()
+
+precision = IntVar()
+precision.set(int(Precision))
+
+tempC = DoubleVar()
+tempF = DoubleVar()
+tempK = DoubleVar()
+
+energyJ = DoubleVar()
+energyeV = DoubleVar()
+energyerg = DoubleVar()
+
+distAn = DoubleVar()
+distMm = DoubleVar()
+distCm = DoubleVar()
+distIn = DoubleVar()
+distFt = DoubleVar()
+distYd = DoubleVar()
+distMt = DoubleVar()
+distKm = DoubleVar()
+distMi = DoubleVar()
+distNa = DoubleVar()
+distAU = DoubleVar()
+distLy = DoubleVar()
+distPc = DoubleVar()
+
+fullPathPN = sys.argv[0]
+programName = os.path.basename(sys.argv[0])
+textfile = open(fullPathPN, 'r')
+filetext = textfile.read()
+textfile.close()
+#m=re.search('^\#\sversion\s\d+\.\d+\.\d+\s-\s\d{14}\s-\s.*$', filetext)
+#m=re.search('version\s\d+\.\d+\.\d+\s', filetext)
+m=re.search('\d+\.\d+\.\d+', filetext)
+result = m.group(0) if m else ""
+
+temperatureParse()
+energyParse()
+
+#rootW.geometry('480x320+256+256')
+rootW.resizable(0, 0)
+rootW.title(programName + " v" + result)
+
+rootW.columnconfigure(0, weight=1)
+
+tempFrame = LabelFrame(rootW, text=" Temperature ", padx=0, pady=0, borderwidth=2, relief=GROOVE)
+tempFrame.columnconfigure(tuple(range(3)), weight=1)
+
+energyFrame = LabelFrame(rootW, text=" Energy ", padx=0, pady=0, borderwidth=2, relief=GROOVE)
+energyFrame.columnconfigure(tuple(range(3)), weight=1)
+
+distFrame = LabelFrame(rootW, text=" Distance ", padx=0, pady=0, borderwidth=2, relief=GROOVE)
+distFrame.columnconfigure(tuple(range(3)), weight=1)
+
+#precFrame = LabelFrame(distFrame, text=" Precision ", padx=0, pady=0, borderwidth=2, relief=GROOVE)
+precFrame = LabelFrame(distFrame, padx=0, pady=0, borderwidth=2, relief=GROOVE)
+precFrame.columnconfigure(tuple(range(3)), weight=1)
+
+buttonFrame = Frame(rootW, padx=4, pady=4, borderwidth=2, relief=GROOVE)
+buttonFrame.columnconfigure(tuple(range(3)), weight=1)
+
+tempCLabel = Label(tempFrame, text=tempCelsiusLabelText, anchor='e')
+tempCEntry = Entry(tempFrame, textvariable=tempC, width=EntryWidth, relief=SUNKEN, justify='right')
+convC2FKButton = Button(tempFrame, text=convC2FKButtonText, command=lambda: C2FK(), width=ButtonWidth - 2, relief=RAISED)
+
+tempFLabel = Label(tempFrame, text=tempFahrenheitLabelText, anchor='e')
+tempFEntry = Entry(tempFrame, textvariable=tempF, width=EntryWidth, relief=SUNKEN, justify='right')
+convF2CKButton = Button(tempFrame, text=convF2CKButtonText, command=lambda: F2CK(), width=ButtonWidth - 2, relief=RAISED)
+
+tempKLabel = Label(tempFrame, text=tempKelvinLabelText, anchor='e')
+tempKEntry = Entry(tempFrame, textvariable=tempK, width=EntryWidth, relief=SUNKEN, justify='right')
+convK2CFButton = Button(tempFrame, text=convK2CFButtonText, command=lambda: K2CF(), width=ButtonWidth - 2, relief=RAISED)
+
+energyJLabel = Label(energyFrame, text=energyJoulesLabelText, anchor='e')
+energyJEntry = Entry(energyFrame, textvariable=energyJ, width=EntryWidth, relief=SUNKEN, justify='right')
+convJ2eVergButton = Button(energyFrame, text=convJ2eVergButtonText, command=lambda: J2eVerg(), width=ButtonWidth, relief=RAISED)
+
+energyeVLabel = Label(energyFrame, text=energy_eVLabelText, anchor='e')
+energyeVEntry = Entry(energyFrame, textvariable=energyeV, width=EntryWidth, relief=SUNKEN, justify='right')
+conveV2JergButton = Button(energyFrame, text=conveV2JergButtonText, command=lambda: eV2Jerg(), width=ButtonWidth, relief=RAISED)
+
+energyergLabel = Label(energyFrame, text=energy_ergLabelText, anchor='e')
+energyergEntry = Entry(energyFrame, textvariable=energyerg, width=EntryWidth, relief=SUNKEN, justify='right')
+converg2JeVButton = Button(energyFrame, text=converg2JeVButtonText, command=lambda: erg2JeV(), width=ButtonWidth, relief=RAISED)
+
+quitButton = Button(buttonFrame, text=exitButtonText, command=mQuit, width=1, relief=RAISED)
+
+clearOneButton = Button(buttonFrame, text=clearOneButtonText, command=clearOne, width=1, relief=RAISED)
+
+resetButton = Button(buttonFrame, text=resetButtonText, command=lambda: \
+  tempC.set(0.00) or\
+  tempF.set(0.00) or\
+  tempK.set(0.00) or\
+  energyJ.set(0.00) or\
+  energyeV.set(0.00) or\
+  energyerg.set(0.00) or\
+  distAn.set(0.00) or\
+  distMm.set(0.00) or\
+  distMm.set(0.00) or\
+  distCm.set(0.00) or\
+  distIn.set(0.00) or\
+  distFt.set(0.00) or\
+  distYd.set(0.00) or\
+  distMt.set(0.00) or\
+  distKm.set(0.00) or\
+  distMi.set(0.00) or\
+  distNa.set(0.00) or\
+  distAU.set(0.00) or\
+  distLy.set(0.00) or\
+  distPc.set(0.00) or\
+  resetButton.focus_set(), width=1, relief=RAISED)
+
+# resetButton.focus_set()
+
+distAnLabel = Label(distFrame, text=dAnLabelText, anchor='e')
+distAnEntry = Entry(distFrame, textvariable=distAn, width=EntryWidth, relief=SUNKEN, justify='right')
+convAn2AButton = Button(distFrame, text=convAn2AButtonText, command=lambda: An2A(), width=ButtonWidth, relief=RAISED)
+
+distMmLabel = Label(distFrame, text=dMmLabelText, anchor='e')
+distMmEntry = Entry(distFrame, textvariable=distMm, width=EntryWidth, relief=SUNKEN, justify='right')
+convMm2AButton = Button(distFrame, text=convMm2AButtonText, command=lambda: mm2A(), width=ButtonWidth, relief=RAISED)
+
+distCmLabel = Label(distFrame, text=dCmLabelText, anchor='e')
+distCmEntry = Entry(distFrame, textvariable=distCm, width=EntryWidth, relief=SUNKEN, justify='right')
+convCm2AButton = Button(distFrame, text=convCm2AButtonText, command=lambda: cm2A(), width=ButtonWidth, relief=RAISED)
+
+distInLabel = Label(distFrame, text=dInLabelText, anchor='e')
+distInEntry = Entry(distFrame, textvariable=distIn, width=EntryWidth, relief=SUNKEN, justify='right')
+convIn2AButton = Button(distFrame, text=convIn2AButtonText, command=lambda: in2A(), width=ButtonWidth, relief=RAISED)
+
+distFtLabel = Label(distFrame, text=dFtLabelText, anchor='e')
+distFtEntry = Entry(distFrame, textvariable=distFt, width=EntryWidth, relief=SUNKEN, justify='right')
+convFt2AButton = Button(distFrame, text=convFt2AButtonText, command=lambda: ft2A(), width=ButtonWidth, relief=RAISED)
+
+distYdLabel = Label(distFrame, text=dYdLabelText, anchor='e')
+distYdEntry = Entry(distFrame, textvariable=distYd, width=EntryWidth, relief=SUNKEN, justify='right')
+convYd2AButton = Button(distFrame, text=convYd2AButtonText, command=lambda: yd2A(), width=ButtonWidth, relief=RAISED)
+
+distMtLabel = Label(distFrame, text=dMtLabelText, anchor='e')
+distMtEntry = Entry(distFrame, textvariable=distMt, width=EntryWidth, relief=SUNKEN, justify='right')
+convMt2AButton = Button(distFrame, text=convMt2AButtonText, command=lambda: mt2A(), width=ButtonWidth, relief=RAISED)
+
+distKmLabel = Label(distFrame, text=dKmLabelText, anchor='e')
+distKmEntry = Entry(distFrame, textvariable=distKm, width=EntryWidth, relief=SUNKEN, justify='right')
+convKm2AButton = Button(distFrame, text=convKm2AButtonText, command=lambda: km2A(), width=ButtonWidth, relief=RAISED)
+
+distMiLabel = Label(distFrame, text=dMiLabelText, anchor='e')
+distMiEntry = Entry(distFrame, textvariable=distMi, width=EntryWidth, relief=SUNKEN, justify='right')
+convMi2AButton = Button(distFrame, text=convMi2AButtonText, command=lambda: mi2A(), width=ButtonWidth, relief=RAISED)
+
+distNaLabel = Label(distFrame, text=dNaLabelText, anchor='e')
+distNaEntry = Entry(distFrame, textvariable=distNa, width=EntryWidth, relief=SUNKEN, justify='right')
+convNa2AButton = Button(distFrame, text=convNa2AButtonText, command=lambda: na2A(), width=ButtonWidth, relief=RAISED)
+
+distAULabel = Label(distFrame, text=dAULabelText, anchor='e')
+distAUEntry = Entry(distFrame, textvariable=distAU, width=EntryWidth, relief=SUNKEN, justify='right')
+convAU2AButton = Button(distFrame, text=convAU2AButtonText, command=lambda: AU2A(), width=ButtonWidth, relief=RAISED)
+
+distLyLabel = Label(distFrame, text=dLyLabelText, anchor='e')
+distLyEntry = Entry(distFrame, textvariable=distLy, width=EntryWidth, relief=SUNKEN, justify='right')
+convLy2AButton = Button(distFrame, text=convLy2AButtonText, command=lambda: ly2A(), width=ButtonWidth, relief=RAISED)
+
+distPcLabel = Label(distFrame, text=dPcLabelText, anchor='e')
+distPcEntry = Entry(distFrame, textvariable=distPc, width=EntryWidth, relief=SUNKEN, justify='right')
+convPc2AButton = Button(distFrame, text=convPc2AButtonText, command=lambda: pc2A(), width=ButtonWidth, relief=RAISED)
+
+precSLabel = Label(precFrame, text=prSLabelText, state='normal', anchor='e')
+#precSpin = Spinbox(precFrame, textvariable=precision, width = 4, state="disabled", from_=0, to=16)
+precSpin = Spinbox(precFrame, textvariable=precision, command=lambda: updateAll(), width = 4, state="normal", from_=0, to=5, justify="right")
+
+tempFrame.grid(row=0, column=0, sticky=(N, S, W, E))
+
+tempCLabel.grid(row=0, column=0, sticky=(N, S, W, E))
+toolTip = Hovertip(tempCLabel,'Degrees Celsius', hover_delay=ToolTipDelay)
+tempCEntry.grid(row=0, column=1, sticky=(N, S, W, E))
+convC2FKButton.grid(row=0, column=2, sticky=(N, S, W, E))
+toolTip = Hovertip(convC2FKButton,'Convert from Celsius\nto Fahrenheit and Kelvin', hover_delay=ToolTipDelay)
+
+tempFLabel.grid(row=1, column=0, sticky=(N, S, W, E))
+toolTip = Hovertip(tempFLabel,'Degrees Fahrenheit', hover_delay=ToolTipDelay)
+tempFEntry.grid(row=1, column=1, sticky=(N, S, W, E))
+convF2CKButton.grid(row=1, column=2, sticky=(N, S, W, E))
+toolTip = Hovertip(convF2CKButton,'Convert from Fahrenheit\nto Celsius and Kelvin', hover_delay=ToolTipDelay)
+
+tempKLabel.grid(row=2, column=0, sticky=(N, S, W, E))
+toolTip = Hovertip(tempKLabel,'Degrees Kelvin', hover_delay=ToolTipDelay)
+tempKEntry.grid(row=2, column=1, sticky=(N, S, W, E))
+convK2CFButton.grid(row=2, column=2, sticky=(N, S, W, E))
+toolTip = Hovertip(convK2CFButton,'Convert from Kelvin\nto Celsius and Fahrenheit', hover_delay=ToolTipDelay)
+
+energyFrame.grid(row=0, column=1, sticky=(N, S, W, E))
+
+energyJLabel.grid(row=0, column=0, sticky=(N, S, W, E))
+toolTip = Hovertip(energyJLabel,'Energy in Joules', hover_delay=ToolTipDelay)
+energyJEntry.grid(row=0, column=1, sticky=(N, S, W, E))
+convJ2eVergButton.grid(row=0, column=2, sticky=(N, S, W, E))
+toolTip = Hovertip(convJ2eVergButton,'Convert from Joules\nto electronVolts and ergs', hover_delay=ToolTipDelay)
+
+energyeVLabel.grid(row=1, column=0, sticky=(N, S, W, E))
+toolTip = Hovertip(energyeVLabel,'Energy in electronVolts', hover_delay=ToolTipDelay)
+energyeVEntry.grid(row=1, column=1, sticky=(N, S, W, E))
+conveV2JergButton.grid(row=1, column=2, sticky=(N, S, W, E))
+toolTip = Hovertip(conveV2JergButton,'Convert from electronVolts\nto Joules and ergs', hover_delay=ToolTipDelay)
+
+energyergLabel.grid(row=2, column=0, sticky=(N, S, W, E))
+toolTip = Hovertip(energyergLabel,'Energy in ergs', hover_delay=ToolTipDelay)
+energyergEntry.grid(row=2, column=1, sticky=(N, S, W, E))
+converg2JeVButton.grid(row=2, column=2, sticky=(N, S, W, E))
+toolTip = Hovertip(converg2JeVButton,'Convert from ergs\nto electronVolts and Joules', hover_delay=ToolTipDelay)
+
+distFrame.grid(row=2, column=0, columnspan=2, sticky=(N, S, W, E))
+
+rowN=0
+
+distAnLabel.grid(row=rowN, column=0, sticky=(N, S, W, E))
+toolTip = Hovertip(distAnLabel,'Angstrom', hover_delay=ToolTipDelay)
+distAnEntry.grid(row=rowN, column=1, sticky=(N, S, W, E))
+convAn2AButton.grid(row=rowN, column=2, sticky=(N, S, W, E))
+toolTip = Hovertip(convAn2AButton,'Convert from Angstrom\nto all other units', hover_delay=ToolTipDelay)
+rowN+=1
+distMmLabel.grid(row=rowN, column=0, sticky=(N, S, W, E))
+toolTip = Hovertip(distMmLabel,'millimetres', hover_delay=ToolTipDelay)
+distMmEntry.grid(row=rowN, column=1, sticky=(N, S, W, E))
+convMm2AButton.grid(row=rowN, column=2, sticky=(N, S, W, E))
+toolTip = Hovertip(convMm2AButton,'Convert from millimetres\nto all other units', hover_delay=ToolTipDelay)
+rowN+=1
+distCmLabel.grid(row=rowN, column=0, sticky=(N, S, W, E))
+toolTip = Hovertip(distCmLabel,'centimetres', hover_delay=ToolTipDelay)
+distCmEntry.grid(row=rowN, column=1, sticky=(N, S, W, E))
+convCm2AButton.grid(row=rowN, column=2, sticky=(N, S, W, E))
+toolTip = Hovertip(convCm2AButton,'Convert from centimetres\nto all other units', hover_delay=ToolTipDelay)
+rowN+=1
+distInLabel.grid(row=rowN, column=0, sticky=(N, S, W, E))
+toolTip = Hovertip(distInLabel,'inches', hover_delay=ToolTipDelay)
+distInEntry.grid(row=rowN, column=1, sticky=(N, S, W, E))
+convIn2AButton.grid(row=rowN, column=2, sticky=(N, S, W, E))
+toolTip = Hovertip(convIn2AButton,'Convert from inches\nto all other units', hover_delay=ToolTipDelay)
+rowN+=1
+distFtLabel.grid(row=rowN, column=0, sticky=(N, S, W, E))
+toolTip = Hovertip(distFtLabel,'feet', hover_delay=ToolTipDelay)
+distFtEntry.grid(row=rowN, column=1, sticky=(N, S, W, E))
+convFt2AButton.grid(row=rowN, column=2, sticky=(N, S, W, E)) 
+toolTip = Hovertip(convFt2AButton,'Convert from feet\nto all other units', hover_delay=ToolTipDelay)
+rowN+=1
+distYdLabel.grid(row=rowN, column=0, sticky=(N, S, W, E))
+toolTip = Hovertip(distYdLabel,'yards', hover_delay=ToolTipDelay)
+distYdEntry.grid(row=rowN, column=1, sticky=(N, S, W, E))
+convYd2AButton.grid(row=rowN, column=2, sticky=(N, S, W, E)) 
+toolTip = Hovertip(convYd2AButton,'Convert from yards\nto all other units', hover_delay=ToolTipDelay)
+rowN+=1
+precFrame.grid(row=rowN, column=1, columnspan=2, sticky=(N, S, W, E))
+#precSLabel.grid(row=rowN, column=0, sticky=(N, S, W, E))
+#precSpin.grid(row=rowN, column=1, columnspan=1, sticky=(N, W))
+precSLabel.grid(row=0, column=0, columnspan=1, sticky=(N, E))
+precSpin.grid(row=0, column=1, columnspan=1, sticky=(N, E))
+rowN=0
+distMtLabel.grid(row=rowN, column=3, sticky=(N, S, W, E))
+toolTip = Hovertip(distMtLabel,'metres', hover_delay=ToolTipDelay)
+distMtEntry.grid(row=rowN, column=4, sticky=(N, S, W, E))
+convMt2AButton.grid(row=rowN, column=5, sticky=(N, S, W, E))
+toolTip = Hovertip(convMt2AButton,'Convert from metres\nto all other units', hover_delay=ToolTipDelay)
+rowN+=1
+distKmLabel.grid(row=rowN, column=3, sticky=(N, S, W, E))
+toolTip = Hovertip(distKmLabel,'kilometres', hover_delay=ToolTipDelay)
+distKmEntry.grid(row=rowN, column=4, sticky=(N, S, W, E))
+convKm2AButton.grid(row=rowN, column=5, sticky=(N, S, W, E))
+toolTip = Hovertip(convKm2AButton,'Convert from kilometres\nto all other units', hover_delay=ToolTipDelay)
+rowN+=1
+distMiLabel.grid(row=rowN, column=3, sticky=(N, S, W, E))
+toolTip = Hovertip(distMiLabel,'Statute miles', hover_delay=ToolTipDelay)
+distMiEntry.grid(row=rowN, column=4, sticky=(N, S, W, E))
+convMi2AButton.grid(row=rowN, column=5, sticky=(N, S, W, E)) 
+toolTip = Hovertip(convMi2AButton,'Convert from Statute miles\nto all other units', hover_delay=ToolTipDelay)
+rowN+=1
+distNaLabel.grid(row=rowN, column=3, sticky=(N, S, W, E))
+toolTip = Hovertip(distNaLabel,'Nautical miles', hover_delay=ToolTipDelay)
+distNaEntry.grid(row=rowN, column=4, sticky=(N, S, W, E))
+convNa2AButton.grid(row=rowN, column=5, sticky=(N, S, W, E)) 
+toolTip = Hovertip(convNa2AButton,'Convert from Nautical miles\nto all other units', hover_delay=ToolTipDelay)
+rowN+=1
+distAULabel.grid(row=rowN, column=3, sticky=(N, S, W, E))
+toolTip = Hovertip(distAULabel,'Astronomical Units', hover_delay=ToolTipDelay)
+distAUEntry.grid(row=rowN, column=4, sticky=(N, S, W, E))
+convAU2AButton.grid(row=rowN, column=5, sticky=(N, S, W, E)) 
+toolTip = Hovertip(convAU2AButton,'Convert from Astronomical Units\nto all other units', hover_delay=ToolTipDelay)
+rowN+=1
+distLyLabel.grid(row=rowN, column=3, sticky=(N, S, W, E))
+toolTip = Hovertip(distLyLabel,'lightyears', hover_delay=ToolTipDelay)
+distLyEntry.grid(row=rowN, column=4, sticky=(N, S, W, E))
+convLy2AButton.grid(row=rowN, column=5, sticky=(N, S, W, E)) 
+toolTip = Hovertip(convLy2AButton,'Convert from lightyears\nto all other units', hover_delay=ToolTipDelay)
+rowN+=1
+distPcLabel.grid(row=rowN, column=3, sticky=(N, S, W, E))
+toolTip = Hovertip(distPcLabel,'parsecs', hover_delay=ToolTipDelay)
+distPcEntry.grid(row=rowN, column=4, sticky=(N, S, W, E))
+convPc2AButton.grid(row=rowN, column=5, sticky=(N, S, W, E))   
+toolTip = Hovertip(convPc2AButton,'Convert from parsecs\nto all other units', hover_delay=ToolTipDelay)
+rowN=0
+
+buttonFrame.grid(row=4, column=0, columnspan=2, sticky=(N, S, W, E))
+
+quitButton.grid(row=0, column=0, sticky=(N, S, W, E))
+toolTip = Hovertip(quitButton,'Quit SXConvert', hover_delay=ToolTipDelay)
+resetButton.grid(row=0, column=1, sticky=(N, S, W, E))
+toolTip = Hovertip(resetButton,'Reset all fields', hover_delay=ToolTipDelay)
+clearOneButton.grid(row=0, column=2, sticky=(N, S, W, E))
+toolTip = Hovertip(clearOneButton,'Clear field with focus', hover_delay=ToolTipDelay)
+
+rootW.mainloop()
